@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="description" content="3D Furniture Preview — Explore furniture models in 3D without AR.">
+  <title>3D Furniture Preview — AR Furniture</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <style>
+    #preview-banner {
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+      z-index: 3000; padding: 8px 18px;
+      background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05));
+      backdrop-filter: blur(12px); border: 1px solid rgba(245,158,11,0.2);
+      border-radius: 20px; font-size: 12px; color: var(--accent);
+      display: flex; align-items: center; gap: 8px;
+    }
+    #preview-banner a {
+      color: var(--accent); text-decoration: underline;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading -->
+  <div id="loading-screen">
+    <div class="loader-ring"></div>
+    <div class="loader-brand">AR Furniture</div>
+    <div class="loader-text">Loading 3D Preview...</div>
+  </div>
+
+  <!-- Top Bar -->
+  <div id="top-bar">
+    <div class="app-title">
+      <span class="icon">🪑</span>
+      <span>3D Preview</span>
+    </div>
+    <div class="top-actions">
+      <button id="btn-reset" class="btn-icon" aria-label="Reset" title="Reset view">🔄</button>
+    </div>
+  </div>
+
+  <!-- Preview Mode Banner -->
+  <div id="preview-banner">
+    🖥️ 3D Preview Mode — <a href="index.html">Switch to AR</a>
+  </div>
+
+  <!-- Side Controls -->
+  <div id="side-controls">
+    <button id="btn-rotate-left" class="btn-icon" aria-label="Rotate left">↺</button>
+    <button id="btn-rotate-right" class="btn-icon" aria-label="Rotate right">↻</button>
+    <button id="btn-color" class="btn-icon" aria-label="Colors">🎨</button>
+    <button id="btn-info" class="btn-icon" aria-label="Product info">ℹ️</button>
+  </div>
+
+  <!-- Color Picker -->
+  <div id="color-picker"></div>
+
+  <!-- Product Info -->
+  <div id="product-info">
+    <div class="product-name">Modern Sofa</div>
+    <div class="product-dims">200 × 80 × 75 cm</div>
+    <div class="product-desc">A sleek modern 3-seater sofa with plush cushions.</div>
+  </div>
+
+  <!-- Furniture Selector -->
+  <div id="furniture-panel">
+    <div class="panel-header">
+      <span class="panel-title">Choose Furniture</span>
+    </div>
+    <div id="furniture-grid" class="furniture-grid"></div>
+  </div>
+
+  <!-- 3D Scene (no AR) -->
+  <a-scene
+    embedded
+    vr-mode-ui="enabled: false"
+    renderer="antialias: true; alpha: false;"
+    loading-screen="enabled: false"
+    style="background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);"
+  >
+    <!-- Sky / Background -->
+    <a-gradient-sky material="shader: flat; color: #1a1a2e;"></a-gradient-sky>
+    <a-sky color="#16213e"></a-sky>
+
+    <!-- Lighting -->
+    <a-entity light="type: ambient; color: #AAB; intensity: 0.5;"></a-entity>
+    <a-entity light="type: directional; color: #FFF; intensity: 0.9;" position="-1 2 1"></a-entity>
+    <a-entity light="type: point; color: #F59E0B; intensity: 0.3;" position="0 2 -1"></a-entity>
+
+    <!-- Ground Grid -->
+    <a-plane position="0 0 0" rotation="-90 0 0" width="6" height="6"
+             material="color: #1a1a2e; opacity: 0.5; transparent: true; shader: flat">
+    </a-plane>
+    <a-entity id="grid-lines"></a-entity>
+
+    <!-- Furniture Container (acts like the marker) -->
+    <a-entity id="ar-marker" position="0 0 -2">
+      <!-- Model injected by JS -->
+    </a-entity>
+
+    <!-- Camera with orbit-like behavior -->
+    <a-entity camera look-controls="pointerLockEnabled: false" position="0 1.2 1"
+              wasd-controls="acceleration: 20"></a-entity>
+  </a-scene>
+
+  <script src="js/furniture.js"></script>
+  <script src="js/interactions.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    // Simplified app init for preview mode
+    (function() {
+      window.currentFurnitureId = 'sofa';
+
+      const scene = document.querySelector('a-scene');
+      if (scene) {
+        scene.addEventListener('loaded', function() {
+          if (window.initUI) window.initUI();
+          if (window.initInteractions) window.initInteractions();
+
+          // Build grid lines
+          const grid = document.getElementById('grid-lines');
+          if (grid) {
+            for (let i = -3; i <= 3; i++) {
+              const lineH = document.createElement('a-entity');
+              lineH.setAttribute('line', `start: -3 0.005 ${i}; end: 3 0.005 ${i}; color: rgba(255,255,255,0.06)`);
+              grid.appendChild(lineH);
+              const lineV = document.createElement('a-entity');
+              lineV.setAttribute('line', `start: ${i} 0.005 -3; end: ${i} 0.005 3; color: rgba(255,255,255,0.06)`);
+              grid.appendChild(lineV);
+            }
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

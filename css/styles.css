@@ -1,0 +1,249 @@
+/* ============================================
+   WebAR Furniture Visualizer — Stylesheet
+   ============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #0a0a0f; color: #f0f0f5;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+
+:root {
+  --accent: #F59E0B;
+  --accent-glow: rgba(245,158,11,0.35);
+  --surface-glass: rgba(20,20,35,0.65);
+  --border-glass: rgba(255,255,255,0.08);
+  --text-primary: #f0f0f5;
+  --text-secondary: rgba(240,240,245,0.6);
+  --success: #22C55E;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* --- Loading Screen --- */
+#loading-screen {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #0a0a1a, #1a1a2e, #0a0a1a);
+  transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+#loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.loader-ring {
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 3px solid rgba(245,158,11,0.15); border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
+}
+.loader-text {
+  margin-top: 24px; font-size: 14px; font-weight: 500;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-secondary); animation: pulse-text 2s ease-in-out infinite;
+}
+.loader-brand {
+  margin-top: 8px; font-size: 28px; font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), #FBBF24);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse-text { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+/* --- Instruction Overlay --- */
+#instruction-overlay {
+  position: fixed; inset: 0; z-index: 5000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(12px);
+  padding: 24px; transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+#instruction-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.instruction-card {
+  max-width: 380px; width: 100%;
+  background: var(--surface-glass); border: 1px solid var(--border-glass);
+  border-radius: var(--radius); padding: 32px 24px; text-align: center;
+  box-shadow: var(--shadow); animation: slide-up 0.6s ease-out;
+}
+.instruction-icon { font-size: 48px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+.instruction-title {
+  font-size: 22px; font-weight: 700; margin-bottom: 8px;
+  background: linear-gradient(135deg, #fff, var(--accent));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.instruction-steps { list-style: none; margin: 20px 0; text-align: left; }
+.instruction-steps li {
+  display: flex; align-items: flex-start; gap: 12px; padding: 10px 0;
+  font-size: 14px; color: var(--text-secondary); line-height: 1.5;
+  border-bottom: 1px solid var(--border-glass);
+}
+.instruction-steps li:last-child { border-bottom: none; }
+.step-number {
+  flex-shrink: 0; width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #000; font-size: 12px; font-weight: 700; border-radius: 50%;
+}
+.instruction-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+
+/* --- Buttons --- */
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, var(--accent), #D97706);
+  color: #000; font-family: inherit; font-size: 15px; font-weight: 600;
+  border: none; border-radius: var(--radius-sm); cursor: pointer;
+  transition: var(--transition); box-shadow: 0 4px 16px var(--accent-glow);
+}
+.btn-primary:active { transform: scale(0.96); }
+.btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 24px; background: var(--surface-glass); color: var(--text-primary);
+  font-family: inherit; font-size: 14px; font-weight: 500;
+  border: 1px solid var(--border-glass); border-radius: var(--radius-sm);
+  cursor: pointer; transition: var(--transition);
+}
+.btn-secondary:active { transform: scale(0.96); background: rgba(255,255,255,0.1); }
+.btn-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px;
+  background: var(--surface-glass); backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass); border-radius: 50%;
+  color: var(--text-primary); font-size: 20px; cursor: pointer;
+  transition: var(--transition); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.btn-icon:active { transform: scale(0.9); background: rgba(255,255,255,0.12); }
+.btn-icon.active {
+  background: var(--accent); color: #000;
+  border-color: var(--accent); box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+/* --- Top Bar --- */
+#top-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 3000;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top));
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+  pointer-events: none;
+}
+#top-bar > * { pointer-events: auto; }
+.app-title { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+.app-title .icon { font-size: 20px; }
+.top-actions { display: flex; gap: 8px; }
+
+/* --- Status Badge --- */
+#status-badge {
+  position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 3000;
+  padding: 8px 18px; background: var(--surface-glass); backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass); border-radius: 20px;
+  font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 8px;
+  transition: var(--transition); animation: slide-down 0.4s ease-out;
+}
+#status-badge.detected { border-color: rgba(34,197,94,0.3); color: var(--success); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); animation: blink 1.5s ease-in-out infinite; }
+#status-badge.detected .status-dot { background: var(--success); animation: none; }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* --- Furniture Selector Panel --- */
+#furniture-panel {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 3000;
+  padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%);
+}
+.panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.panel-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-secondary); }
+.furniture-grid {
+  display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;
+  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.furniture-grid::-webkit-scrollbar { display: none; }
+.furniture-card {
+  flex-shrink: 0; width: 110px; scroll-snap-align: start;
+  background: var(--surface-glass); backdrop-filter: blur(12px);
+  border: 2px solid var(--border-glass); border-radius: var(--radius-sm);
+  padding: 12px; text-align: center; cursor: pointer; transition: var(--transition);
+}
+.furniture-card:active { transform: scale(0.95); }
+.furniture-card.selected { border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+.furniture-card .card-icon { font-size: 36px; margin-bottom: 8px; display: block; }
+.furniture-card .card-name { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+.furniture-card .card-dims { font-size: 10px; color: var(--text-secondary); }
+
+/* --- Product Info Panel --- */
+#product-info {
+  position: fixed; bottom: 190px; left: 16px; right: 72px; z-index: 2500;
+  background: var(--surface-glass); backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass); border-radius: var(--radius);
+  padding: 16px 20px; display: none; animation: slide-up 0.4s ease-out; box-shadow: var(--shadow);
+}
+#product-info.visible { display: block; }
+.product-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.product-dims { font-size: 13px; color: var(--accent); font-weight: 500; margin-bottom: 8px; }
+.product-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+/* --- Color Picker --- */
+#color-picker {
+  position: fixed; right: 16px; bottom: 180px; z-index: 2800;
+  display: none; flex-direction: column; gap: 8px; animation: slide-left 0.3s ease-out;
+}
+#color-picker.visible { display: flex; }
+.color-swatch {
+  width: 36px; height: 36px; border-radius: 50%; border: 3px solid transparent;
+  cursor: pointer; transition: var(--transition); box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.color-swatch:active { transform: scale(0.9); }
+.color-swatch.selected { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.3); }
+
+/* --- Side Controls --- */
+#side-controls {
+  position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2800;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+/* --- Marker Guide --- */
+#marker-guide {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 1500;
+  width: 200px; height: 200px; border: 2px dashed rgba(245,158,11,0.4);
+  border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  pointer-events: none; animation: pulse-border 2s ease-in-out infinite;
+}
+#marker-guide.hidden { display: none; }
+.marker-guide-text {
+  font-size: 12px; color: var(--accent); font-weight: 500; text-align: center;
+  padding: 12px; background: rgba(0,0,0,0.5); border-radius: 6px;
+}
+@keyframes pulse-border { 0%,100% { border-color: rgba(245,158,11,0.2); } 50% { border-color: rgba(245,158,11,0.6); } }
+
+/* --- Toast --- */
+.toast {
+  position: fixed; top: 100px; left: 50%;
+  transform: translateX(-50%) translateY(-20px); z-index: 9000;
+  padding: 12px 24px; background: var(--surface-glass); backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass); border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+  opacity: 0; transition: all 0.4s ease; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* --- Animations --- */
+@keyframes slide-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slide-down { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes slide-left { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+/* --- A-Frame Overrides --- */
+a-scene { position: fixed !important; inset: 0 !important; z-index: 0 !important; }
+.a-enter-vr, .a-enter-ar { display: none !important; }
+/* Hide AR.js debug error overlay on desktop */
+a-scene .a-loader-title,
+.arjs-loader { display: none !important; }
+body > span:first-child { display: none !important; }
+
+@media (min-width: 768px) {
+  .furniture-card { width: 140px; padding: 16px; }
+  .furniture-card .card-icon { font-size: 44px; }
+  .instruction-card { max-width: 440px; padding: 40px 32px; }
+  #product-info { max-width: 400px; left: 50%; right: auto; transform: translateX(-50%); }
+}
