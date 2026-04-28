@@ -2,225 +2,173 @@
  * ui.js — UI Controller for AR Furniture Visualizer
  * Manages overlays, furniture selector, product info, color picker, toasts.
  */
-(function () {
-  'use strict';
+import { FURNITURE_CATALOG, createFurnitureModel } from './furniture.js';
+import { rotateModel, resetTransform, setInteractionTarget } from './interactions.js';
 
-  let currentFurnitureIndex = 0;
-  let currentColorIndex = 0;
-  let markerDetected = false;
-  let productInfoVisible = false;
-  let colorPickerVisible = false;
+let currentFurnitureIndex = 0;
+let currentColorIndex = 0;
+let productInfoVisible = false;
+let colorPickerVisible = false;
 
-  /* --- Toast Notifications --- */
-  function showToast(msg, duration) {
-    duration = duration || 2500;
-    let t = document.getElementById('toast');
-    if (!t) {
-      t = document.createElement('div');
-      t.id = 'toast';
-      t.className = 'toast';
-      document.body.appendChild(t);
-    }
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), duration);
+// Callback set by app.js to handle model placement
+let onFurnitureChangeCb = null;
+let onColorChangeCb = null;
+
+export function setOnFurnitureChange(cb) { onFurnitureChangeCb = cb; }
+export function setOnColorChange(cb) { onColorChangeCb = cb; }
+
+export function getCurrentFurnitureId() {
+  return FURNITURE_CATALOG[currentFurnitureIndex].id;
+}
+export function getCurrentColorIndex() {
+  return currentColorIndex;
+}
+
+/* --- Toast --- */
+export function showToast(msg, duration) {
+  duration = duration || 2500;
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast'; t.className = 'toast';
+    document.body.appendChild(t);
   }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), duration);
+}
 
-  /* --- Loading Screen --- */
-  function hideLoading() {
-    const ls = document.getElementById('loading-screen');
-    if (ls) ls.classList.add('hidden');
+/* --- Loading Screen --- */
+export function hideLoading() {
+  const ls = document.getElementById('loading-screen');
+  if (ls) ls.classList.add('hidden');
+}
+
+/* --- Instruction Overlay --- */
+export function showInstructions() {
+  const ov = document.getElementById('instruction-overlay');
+  if (ov) ov.classList.remove('hidden');
+}
+export function hideInstructions() {
+  const ov = document.getElementById('instruction-overlay');
+  if (ov) ov.classList.add('hidden');
+}
+
+/* --- Status Badge --- */
+export function updateStatus(text, detected) {
+  const badge = document.getElementById('status-badge');
+  const guide = document.getElementById('marker-guide');
+  if (badge) {
+    badge.querySelector('.status-text').textContent = text;
+    badge.classList.toggle('detected', !!detected);
   }
+  if (guide) guide.classList.toggle('hidden', !!detected);
+}
 
-  /* --- Instruction Overlay --- */
-  function showInstructions() {
-    const ov = document.getElementById('instruction-overlay');
-    if (ov) ov.classList.remove('hidden');
-  }
+/* --- Furniture Selector --- */
+function buildFurnitureCards() {
+  const grid = document.getElementById('furniture-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  FURNITURE_CATALOG.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'furniture-card' + (i === currentFurnitureIndex ? ' selected' : '');
+    card.innerHTML = `
+      <span class="card-icon">${item.icon}</span>
+      <div class="card-name">${item.name}</div>
+      <div class="card-dims">${item.dimensions}</div>`;
+    card.addEventListener('click', () => selectFurniture(i));
+    grid.appendChild(card);
+  });
+}
 
-  function hideInstructions() {
-    const ov = document.getElementById('instruction-overlay');
-    if (ov) ov.classList.add('hidden');
-  }
+function selectFurniture(index) {
+  currentFurnitureIndex = index;
+  currentColorIndex = 0;
+  const item = FURNITURE_CATALOG[index];
 
-  /* --- Status Badge --- */
-  function updateStatus(detected) {
-    markerDetected = detected;
-    const badge = document.getElementById('status-badge');
-    const guide = document.getElementById('marker-guide');
-    if (badge) {
-      if (detected) {
-        badge.classList.add('detected');
-        badge.querySelector('.status-text').textContent = 'Marker Detected';
-      } else {
-        badge.classList.remove('detected');
-        badge.querySelector('.status-text').textContent = 'Looking for marker...';
-      }
-    }
-    if (guide) {
-      if (detected) guide.classList.add('hidden');
-      else guide.classList.remove('hidden');
-    }
-  }
+  document.querySelectorAll('.furniture-card').forEach((c, i) => {
+    c.classList.toggle('selected', i === index);
+  });
 
-  /* --- Furniture Selector --- */
-  function buildFurnitureCards() {
-    const grid = document.getElementById('furniture-grid');
-    if (!grid || !window.FurnitureCatalog) return;
-    grid.innerHTML = '';
-    window.FurnitureCatalog.forEach((item, i) => {
-      const card = document.createElement('div');
-      card.className = 'furniture-card' + (i === currentFurnitureIndex ? ' selected' : '');
-      card.dataset.index = i;
-      card.innerHTML = `
-        <span class="card-icon">${item.icon}</span>
-        <div class="card-name">${item.name}</div>
-        <div class="card-dims">${item.dimensions}</div>`;
-      card.addEventListener('click', () => selectFurniture(i));
-      grid.appendChild(card);
-    });
-  }
+  updateProductInfo(item);
+  buildColorPicker(item);
 
-  function selectFurniture(index) {
-    currentFurnitureIndex = index;
-    currentColorIndex = 0;
-    const item = window.FurnitureCatalog[index];
-    window.currentFurnitureId = item.id;
+  if (onFurnitureChangeCb) onFurnitureChangeCb(item.id, 0);
+  showToast(`${item.icon} ${item.name} selected`);
+}
 
-    // Update cards
-    document.querySelectorAll('.furniture-card').forEach((c, i) => {
-      c.classList.toggle('selected', i === index);
-    });
+/* --- Product Info --- */
+function updateProductInfo(item) {
+  const panel = document.getElementById('product-info');
+  if (!panel) return;
+  panel.querySelector('.product-name').textContent = item.name;
+  panel.querySelector('.product-dims').textContent = item.dimensions;
+  panel.querySelector('.product-desc').textContent = item.description;
+}
 
-    // Place model
-    const marker = document.getElementById('ar-marker');
-    if (marker) {
-      const old = marker.querySelector('#furniture-model');
-      if (old) old.remove();
-      const model = window.createFurnitureModel(item.id, currentColorIndex);
-      if (model) marker.appendChild(model);
-    }
+function toggleProductInfo() {
+  const panel = document.getElementById('product-info');
+  if (!panel) return;
+  productInfoVisible = !productInfoVisible;
+  panel.classList.toggle('visible', productInfoVisible);
+}
 
-    // Update product info
-    updateProductInfo(item);
-    // Update color picker
-    buildColorPicker(item);
-    showToast(`${item.icon} ${item.name} selected`);
-  }
-
-  /* --- Product Info --- */
-  function updateProductInfo(item) {
-    const panel = document.getElementById('product-info');
-    if (!panel) return;
-    panel.querySelector('.product-name').textContent = item.name;
-    panel.querySelector('.product-dims').textContent = item.dimensions;
-    panel.querySelector('.product-desc').textContent = item.description;
-  }
-
-  function toggleProductInfo() {
-    const panel = document.getElementById('product-info');
-    if (!panel) return;
-    productInfoVisible = !productInfoVisible;
-    panel.classList.toggle('visible', productInfoVisible);
-  }
-
-  /* --- Color Picker --- */
-  function buildColorPicker(item) {
-    const picker = document.getElementById('color-picker');
-    if (!picker) return;
-    picker.innerHTML = '';
-    item.colors.forEach((c, i) => {
-      const swatch = document.createElement('button');
-      swatch.className = 'color-swatch' + (i === currentColorIndex ? ' selected' : '');
-      swatch.style.background = c.base;
-      swatch.title = c.name;
-      swatch.setAttribute('aria-label', `Color: ${c.name}`);
-      swatch.addEventListener('click', () => {
-        currentColorIndex = i;
-        document.querySelectorAll('.color-swatch').forEach((s, j) => {
-          s.classList.toggle('selected', j === i);
-        });
-        window.updateFurnitureColor(item.id, i);
-        showToast(`Color: ${c.name}`);
+/* --- Color Picker --- */
+function buildColorPicker(item) {
+  const picker = document.getElementById('color-picker');
+  if (!picker) return;
+  picker.innerHTML = '';
+  item.colors.forEach((c, i) => {
+    const swatch = document.createElement('button');
+    swatch.className = 'color-swatch' + (i === currentColorIndex ? ' selected' : '');
+    swatch.style.background = c.base;
+    swatch.title = c.name;
+    swatch.setAttribute('aria-label', `Color: ${c.name}`);
+    swatch.addEventListener('click', () => {
+      currentColorIndex = i;
+      document.querySelectorAll('.color-swatch').forEach((s, j) => {
+        s.classList.toggle('selected', j === i);
       });
-      picker.appendChild(swatch);
+      if (onColorChangeCb) onColorChangeCb(FURNITURE_CATALOG[currentFurnitureIndex].id, i);
+      showToast(`Color: ${c.name}`);
     });
-  }
+    picker.appendChild(swatch);
+  });
+}
 
-  function toggleColorPicker() {
-    const picker = document.getElementById('color-picker');
-    if (!picker) return;
-    colorPickerVisible = !colorPickerVisible;
-    picker.classList.toggle('visible', colorPickerVisible);
-  }
+function toggleColorPicker() {
+  colorPickerVisible = !colorPickerVisible;
+  const picker = document.getElementById('color-picker');
+  if (picker) picker.classList.toggle('visible', colorPickerVisible);
+}
 
-  /* --- Reset Scene --- */
-  function resetScene() {
-    if (window.resetTransform) window.resetTransform();
+/* --- Init UI --- */
+export function initUI() {
+  buildFurnitureCards();
+
+  // Select default
+  const item = FURNITURE_CATALOG[0];
+  updateProductInfo(item);
+  buildColorPicker(item);
+
+  // Buttons
+  document.getElementById('btn-reset')?.addEventListener('click', () => {
+    resetTransform();
     showToast('🔄 Scene reset');
-  }
+  });
+  document.getElementById('btn-rotate-left')?.addEventListener('click', () => {
+    rotateModel(-45);
+    showToast('↺ Rotated -45°');
+  });
+  document.getElementById('btn-rotate-right')?.addEventListener('click', () => {
+    rotateModel(45);
+    showToast('↻ Rotated +45°');
+  });
+  document.getElementById('btn-info')?.addEventListener('click', toggleProductInfo);
+  document.getElementById('btn-color')?.addEventListener('click', toggleColorPicker);
+  document.getElementById('btn-help')?.addEventListener('click', showInstructions);
 
-  /* --- Download Marker --- */
-  function downloadMarker() {
-    const link = document.createElement('a');
-    link.href = 'assets/markers/hiro-marker.png';
-    link.download = 'hiro-marker.png';
-    link.click();
-    showToast('📥 Marker downloaded');
-  }
-
-  /* --- Initialize UI --- */
-  function initUI() {
-    // Build furniture cards
-    buildFurnitureCards();
-
-    // Start AR button
-    const startBtn = document.getElementById('btn-start-ar');
-    if (startBtn) startBtn.addEventListener('click', hideInstructions);
-
-    // Download marker button
-    const dlBtn = document.getElementById('btn-download-marker');
-    if (dlBtn) dlBtn.addEventListener('click', downloadMarker);
-
-    // Reset button
-    const resetBtn = document.getElementById('btn-reset');
-    if (resetBtn) resetBtn.addEventListener('click', resetScene);
-
-    // Rotate buttons
-    const rotLeftBtn = document.getElementById('btn-rotate-left');
-    const rotRightBtn = document.getElementById('btn-rotate-right');
-    if (rotLeftBtn) rotLeftBtn.addEventListener('click', () => {
-      if (window.rotateModel) window.rotateModel(-45);
-      showToast('↺ Rotated -45°');
-    });
-    if (rotRightBtn) rotRightBtn.addEventListener('click', () => {
-      if (window.rotateModel) window.rotateModel(45);
-      showToast('↻ Rotated +45°');
-    });
-
-    // Info button
-    const infoBtn = document.getElementById('btn-info');
-    if (infoBtn) infoBtn.addEventListener('click', toggleProductInfo);
-
-    // Color button
-    const colorBtn = document.getElementById('btn-color');
-    if (colorBtn) colorBtn.addEventListener('click', toggleColorPicker);
-
-    // Help button
-    const helpBtn = document.getElementById('btn-help');
-    if (helpBtn) helpBtn.addEventListener('click', showInstructions);
-
-    // Select default furniture
-    selectFurniture(0);
-
-    // Hide loading after short delay
-    setTimeout(hideLoading, 1500);
-  }
-
-  // Export
-  window.initUI = initUI;
-  window.showToast = showToast;
-  window.updateStatus = updateStatus;
-  window.hideInstructions = hideInstructions;
-  window.selectFurniture = selectFurniture;
-})();
+  setTimeout(hideLoading, 800);
+}
