@@ -1,0 +1,19 @@
+{
+  "name": "AR E-Commerce Product Viewer",
+  "short_name": "AR Shop",
+  "description": "Try before you buy — visualize products in your real space using augmented reality with multi-object placement, AR ruler, and 3D interaction.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a0a0f",
+  "background_color": "#0a0a0f",
+  "categories": ["utilities", "lifestyle", "shopping"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🛒</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

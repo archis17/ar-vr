@@ -3,6 +3,7 @@
  * Pinch to scale, drag to move, two-finger twist to rotate.
  * Works on the Three.js renderer canvas.
  */
+import { clamp, touchDistance, touchAngle } from './utils.js';
 
 let currentModel = null;
 let isInteracting = false;
@@ -11,16 +12,13 @@ let initialAngle = 0, currentRotY = 0, initialRotY = 0;
 let isDragging = false, lastTX = 0, lastTY = 0;
 const MIN_S = 0.3, MAX_S = 3.0;
 
-function dist(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
-function angle(a, b) { return Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 57.2958; }
-
 function onTS(e) {
   if (!currentModel) return;
   if (e.touches.length === 2) {
     e.preventDefault();
     isInteracting = true;
-    initialPinchDist = dist(e.touches[0], e.touches[1]);
-    initialAngle = angle(e.touches[0], e.touches[1]);
+    initialPinchDist = touchDistance(e.touches[0], e.touches[1]);
+    initialAngle = touchAngle(e.touches[0], e.touches[1]);
     initialScale = currentModel.scale.x;
     initialRotY = currentModel.rotation.y;
   } else if (e.touches.length === 1) {
@@ -35,11 +33,11 @@ function onTM(e) {
   if (e.touches.length === 2 && isInteracting) {
     e.preventDefault();
     // Pinch to scale
-    const d = dist(e.touches[0], e.touches[1]);
-    currentScale = Math.max(MIN_S, Math.min(MAX_S, initialScale * (d / initialPinchDist)));
+    const d = touchDistance(e.touches[0], e.touches[1]);
+    currentScale = clamp(initialScale * (d / initialPinchDist), MIN_S, MAX_S);
     currentModel.scale.set(currentScale, currentScale, currentScale);
     // Two-finger rotate
-    const a = angle(e.touches[0], e.touches[1]);
+    const a = touchAngle(e.touches[0], e.touches[1]);
     currentRotY = initialRotY + (a - initialAngle) * (Math.PI / 180);
     currentModel.rotation.y = currentRotY;
   } else if (e.touches.length === 1 && isDragging) {

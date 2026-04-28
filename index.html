@@ -6,9 +6,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0a0a0f">
-  <meta name="description" content="AR Furniture Visualizer — Preview furniture in your space using augmented reality directly in your browser.">
-  <title>AR Furniture Visualizer</title>
+  <meta name="description" content="AR E-Commerce Product Viewer — Try before you buy. Visualize products in your real environment using augmented reality. Multi-object placement, AR measurement, and real-time 3D interaction.">
+  <title>AR E-Commerce Product Viewer</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="manifest" href="manifest.json">
 
   <!-- Three.js via Import Map -->
   <script type="importmap">
@@ -25,18 +26,24 @@
   <!-- ======== Loading Screen ======== -->
   <div id="loading-screen">
     <div class="loader-ring"></div>
-    <div class="loader-brand">AR Furniture</div>
+    <div class="loader-brand">AR Shop</div>
     <div class="loader-text">Initializing...</div>
   </div>
 
   <!-- ======== Instruction Overlay ======== -->
   <div id="instruction-overlay">
     <div class="instruction-card">
-      <div class="instruction-icon">📐</div>
-      <h2 class="instruction-title">AR Furniture Visualizer</h2>
+      <div class="instruction-icon">🛒</div>
+      <h2 class="instruction-title">AR E-Commerce Product Viewer</h2>
       <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 6px;">
-        Preview furniture in your real space — no marker needed
+        Try before you buy — visualize products in your real environment
       </p>
+      <div class="feature-badges">
+        <span class="feature-badge">📦 Multi-Object</span>
+        <span class="feature-badge">📏 AR Ruler</span>
+        <span class="feature-badge">📸 Screenshot</span>
+        <span class="feature-badge">🛍️ 6 Products</span>
+      </div>
       <ul class="instruction-steps">
         <li>
           <span class="step-number">1</span>
@@ -52,7 +59,7 @@
         </li>
         <li>
           <span class="step-number">4</span>
-          <span><strong>Tap the screen</strong> to place furniture at the ring</span>
+          <span><strong>Tap the screen</strong> to place a product — place <strong style="color:var(--accent);">multiple items!</strong></span>
         </li>
         <li>
           <span class="step-number">5</span>
@@ -74,12 +81,16 @@
   <!-- ======== Top Bar ======== -->
   <div id="top-bar">
     <div class="app-title">
-      <span class="icon">🪑</span>
-      <span>AR Furniture</span>
+      <span class="icon">🛒</span>
+      <span>AR Shop</span>
     </div>
     <div class="top-actions">
+      <span id="object-count" class="object-count-badge" style="display:none;"></span>
+      <button id="btn-measure" class="btn-icon" aria-label="Measure" title="AR Measurement Tool">📏</button>
+      <button id="btn-screenshot" class="btn-icon" aria-label="Screenshot" title="Capture & Share">📸</button>
+      <button id="btn-perf" class="btn-icon" aria-label="Performance" title="Performance stats">⚡</button>
       <button id="btn-help" class="btn-icon" aria-label="Help" title="Instructions">❓</button>
-      <button id="btn-reset" class="btn-icon" aria-label="Reset" title="Reset scene">🔄</button>
+      <button id="btn-reset" class="btn-icon" aria-label="Reset" title="Reset transform">🔄</button>
     </div>
   </div>
 
@@ -100,6 +111,15 @@
     <button id="btn-rotate-right" class="btn-icon" aria-label="Rotate right" title="Rotate right">↻</button>
     <button id="btn-color" class="btn-icon" aria-label="Colors" title="Change color">🎨</button>
     <button id="btn-info" class="btn-icon" aria-label="Product info" title="Product info">ℹ️</button>
+    <div class="side-divider"></div>
+    <button id="btn-delete" class="btn-icon btn-danger" aria-label="Delete" title="Delete selected">🗑️</button>
+    <button id="btn-clear-all" class="btn-icon btn-danger" aria-label="Clear all" title="Clear all products">🧹</button>
+  </div>
+
+  <!-- ======== Measurement Controls (visible in measure mode) ======== -->
+  <div id="measure-controls" class="measure-controls hidden">
+    <button id="btn-measure-undo" class="btn-icon btn-small" aria-label="Undo measurement" title="Undo last measurement">↩️</button>
+    <button id="btn-measure-unit" class="btn-icon btn-small" aria-label="Toggle unit" title="Toggle cm/in">📐</button>
   </div>
 
   <!-- ======== Color Picker ======== -->
@@ -107,15 +127,22 @@
 
   <!-- ======== Product Info Panel ======== -->
   <div id="product-info">
-    <div class="product-name">Modern Sofa</div>
-    <div class="product-dims">200 × 80 × 75 cm</div>
-    <div class="product-desc">A sleek modern 3-seater sofa with plush cushions.</div>
+    <div class="product-header">
+      <div>
+        <div class="product-name">Running Sneakers</div>
+        <span class="product-category">Footwear</span>
+      </div>
+      <div class="product-price">$149</div>
+    </div>
+    <div class="product-dims">30 × 12 × 14 cm</div>
+    <div class="product-desc">Lightweight performance running shoes with breathable mesh upper.</div>
   </div>
 
-  <!-- ======== Furniture Selector ======== -->
+  <!-- ======== Product Selector ======== -->
   <div id="furniture-panel">
     <div class="panel-header">
-      <span class="panel-title">Choose Furniture</span>
+      <span class="panel-title">Choose Product</span>
+      <span class="panel-count" id="panel-item-count">6 items</span>
     </div>
     <div id="furniture-grid" class="furniture-grid"></div>
   </div>

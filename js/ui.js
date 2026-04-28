@@ -1,24 +1,24 @@
 /**
- * ui.js — UI Controller for AR Furniture Visualizer
- * Manages overlays, furniture selector, product info, color picker, toasts.
+ * ui.js — UI Controller for AR E-Commerce Product Viewer
+ * Manages overlays, product selector, product info, color picker, toasts.
  */
-import { FURNITURE_CATALOG, createFurnitureModel } from './furniture.js';
+import { PRODUCT_CATALOG, createProductModel } from './furniture.js';
 import { rotateModel, resetTransform, setInteractionTarget } from './interactions.js';
 
-let currentFurnitureIndex = 0;
+let currentProductIndex = 0;
 let currentColorIndex = 0;
 let productInfoVisible = false;
 let colorPickerVisible = false;
 
 // Callback set by app.js to handle model placement
-let onFurnitureChangeCb = null;
+let onProductChangeCb = null;
 let onColorChangeCb = null;
 
-export function setOnFurnitureChange(cb) { onFurnitureChangeCb = cb; }
+export function setOnFurnitureChange(cb) { onProductChangeCb = cb; }
 export function setOnColorChange(cb) { onColorChangeCb = cb; }
 
 export function getCurrentFurnitureId() {
-  return FURNITURE_CATALOG[currentFurnitureIndex].id;
+  return PRODUCT_CATALOG[currentProductIndex].id;
 }
 export function getCurrentColorIndex() {
   return currentColorIndex;
@@ -66,27 +66,28 @@ export function updateStatus(text, detected) {
   if (guide) guide.classList.toggle('hidden', !!detected);
 }
 
-/* --- Furniture Selector --- */
-function buildFurnitureCards() {
+/* --- Product Selector --- */
+function buildProductCards() {
   const grid = document.getElementById('furniture-grid');
   if (!grid) return;
   grid.innerHTML = '';
-  FURNITURE_CATALOG.forEach((item, i) => {
+  PRODUCT_CATALOG.forEach((item, i) => {
     const card = document.createElement('div');
-    card.className = 'furniture-card' + (i === currentFurnitureIndex ? ' selected' : '');
+    card.className = 'furniture-card' + (i === currentProductIndex ? ' selected' : '');
     card.innerHTML = `
       <span class="card-icon">${item.icon}</span>
       <div class="card-name">${item.name}</div>
-      <div class="card-dims">${item.dimensions}</div>`;
-    card.addEventListener('click', () => selectFurniture(i));
+      <div class="card-dims">${item.dimensions}</div>
+      <div class="card-price">${item.price || ''}</div>`;
+    card.addEventListener('click', () => selectProduct(i));
     grid.appendChild(card);
   });
 }
 
-function selectFurniture(index) {
-  currentFurnitureIndex = index;
+function selectProduct(index) {
+  currentProductIndex = index;
   currentColorIndex = 0;
-  const item = FURNITURE_CATALOG[index];
+  const item = PRODUCT_CATALOG[index];
 
   document.querySelectorAll('.furniture-card').forEach((c, i) => {
     c.classList.toggle('selected', i === index);
@@ -95,7 +96,7 @@ function selectFurniture(index) {
   updateProductInfo(item);
   buildColorPicker(item);
 
-  if (onFurnitureChangeCb) onFurnitureChangeCb(item.id, 0);
+  if (onProductChangeCb) onProductChangeCb(item.id, 0);
   showToast(`${item.icon} ${item.name} selected`);
 }
 
@@ -106,6 +107,10 @@ function updateProductInfo(item) {
   panel.querySelector('.product-name').textContent = item.name;
   panel.querySelector('.product-dims').textContent = item.dimensions;
   panel.querySelector('.product-desc').textContent = item.description;
+  const priceEl = panel.querySelector('.product-price');
+  if (priceEl) priceEl.textContent = item.price || '';
+  const catEl = panel.querySelector('.product-category');
+  if (catEl) catEl.textContent = item.category || '';
 }
 
 function toggleProductInfo() {
@@ -131,7 +136,7 @@ function buildColorPicker(item) {
       document.querySelectorAll('.color-swatch').forEach((s, j) => {
         s.classList.toggle('selected', j === i);
       });
-      if (onColorChangeCb) onColorChangeCb(FURNITURE_CATALOG[currentFurnitureIndex].id, i);
+      if (onColorChangeCb) onColorChangeCb(PRODUCT_CATALOG[currentProductIndex].id, i);
       showToast(`Color: ${c.name}`);
     });
     picker.appendChild(swatch);
@@ -146,17 +151,17 @@ function toggleColorPicker() {
 
 /* --- Init UI --- */
 export function initUI() {
-  buildFurnitureCards();
+  buildProductCards();
 
   // Select default
-  const item = FURNITURE_CATALOG[0];
+  const item = PRODUCT_CATALOG[0];
   updateProductInfo(item);
   buildColorPicker(item);
 
   // Buttons
   document.getElementById('btn-reset')?.addEventListener('click', () => {
     resetTransform();
-    showToast('🔄 Scene reset');
+    showToast('🔄 Transform reset');
   });
   document.getElementById('btn-rotate-left')?.addEventListener('click', () => {
     rotateModel(-45);

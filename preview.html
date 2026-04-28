@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0a0a0f">
-  <meta name="description" content="3D Furniture Preview — Explore furniture models in 3D without AR.">
-  <title>3D Furniture Preview — AR Furniture</title>
+  <meta name="description" content="3D Product Preview — Explore products in 3D without AR.">
+  <title>3D Product Preview — AR Shop</title>
   <link rel="stylesheet" href="css/styles.css">
   <script type="importmap">
   {
@@ -33,13 +33,13 @@
   <!-- Loading -->
   <div id="loading-screen">
     <div class="loader-ring"></div>
-    <div class="loader-brand">AR Furniture</div>
+    <div class="loader-brand">AR Shop</div>
     <div class="loader-text">Loading 3D Preview...</div>
   </div>
 
   <!-- Top Bar -->
   <div id="top-bar">
-    <div class="app-title"><span class="icon">🪑</span><span>3D Preview</span></div>
+    <div class="app-title"><span class="icon">🛒</span><span>3D Preview</span></div>
     <div class="top-actions">
       <button id="btn-reset" class="btn-icon" aria-label="Reset">🔄</button>
     </div>
@@ -57,20 +57,29 @@
   <div id="color-picker"></div>
 
   <div id="product-info">
-    <div class="product-name">Modern Sofa</div>
-    <div class="product-dims">200 × 80 × 75 cm</div>
-    <div class="product-desc">A sleek modern 3-seater sofa.</div>
+    <div class="product-header">
+      <div>
+        <div class="product-name">Running Sneakers</div>
+        <span class="product-category">Footwear</span>
+      </div>
+      <div class="product-price">$149</div>
+    </div>
+    <div class="product-dims">30 × 12 × 14 cm</div>
+    <div class="product-desc">Lightweight performance running shoes with breathable mesh upper.</div>
   </div>
 
   <div id="furniture-panel">
-    <div class="panel-header"><span class="panel-title">Choose Furniture</span></div>
+    <div class="panel-header">
+      <span class="panel-title">Choose Product</span>
+      <span class="panel-count">6 items</span>
+    </div>
     <div id="furniture-grid" class="furniture-grid"></div>
   </div>
 
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { createFurnitureModel, FURNITURE_CATALOG } from './js/furniture.js';
+    import { createProductModel, PRODUCT_CATALOG } from './js/furniture.js';
     import {
       initUI, hideLoading, showToast,
       setOnFurnitureChange, setOnColorChange,
@@ -84,13 +93,17 @@
       scene.background = new THREE.Color(0x16213e);
 
       camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 50);
-      camera.position.set(0, 1.0, 2.0);
+      camera.position.set(0, 0.5, 1.2);
 
       // Lighting
       scene.add(new THREE.HemisphereLight(0xaabbcc, 0x444466, 1.5));
       const dir = new THREE.DirectionalLight(0xffffff, 1.2);
       dir.position.set(2, 4, 3); dir.castShadow = true;
+      dir.shadow.mapSize.set(1024, 1024);
       scene.add(dir);
+      const fill = new THREE.DirectionalLight(0xfff0e6, 0.4);
+      fill.position.set(-2, 2, -1);
+      scene.add(fill);
       const point = new THREE.PointLight(0xF59E0B, 0.5, 10);
       point.position.set(0, 2, -1);
       scene.add(point);
@@ -114,6 +127,9 @@
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
       renderer.domElement.style.position = 'fixed';
       renderer.domElement.style.inset = '0';
       renderer.domElement.style.zIndex = '0';
@@ -121,16 +137,16 @@
 
       // Orbit controls
       controls = new OrbitControls(camera, renderer.domElement);
-      controls.target.set(0, 0.3, 0);
+      controls.target.set(0, 0.15, 0);
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
-      controls.minDistance = 0.5;
+      controls.minDistance = 0.3;
       controls.maxDistance = 5;
       controls.maxPolarAngle = Math.PI / 2;
       controls.update();
 
       // Place initial model
-      placeModel('sofa', 0);
+      placeModel('sneakers', 0);
 
       // UI callbacks
       setOnFurnitureChange((id, ci) => placeModel(id, ci));
@@ -168,7 +184,7 @@
 
     function placeModel(id, colorIndex) {
       if (currentModel) scene.remove(currentModel);
-      currentModel = createFurnitureModel(id, colorIndex);
+      currentModel = createProductModel(id, colorIndex);
       if (currentModel) {
         currentModel.position.set(0, 0, 0);
         scene.add(currentModel);

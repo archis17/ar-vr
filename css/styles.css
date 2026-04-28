@@ -1,5 +1,7 @@
 /* ============================================
-   WebAR Furniture Visualizer — Stylesheet
+   AR E-Commerce Product Viewer — Stylesheet
+   Enhanced for Capstone with Multi-Object,
+   Measurement, Screenshot, Performance Panel
    ============================================ */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -21,6 +23,8 @@ html, body {
   --text-primary: #f0f0f5;
   --text-secondary: rgba(240,240,245,0.6);
   --success: #22C55E;
+  --danger: #EF4444;
+  --info: #3B82F6;
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 8px 32px rgba(0,0,0,0.4);
@@ -62,7 +66,7 @@ html, body {
 }
 #instruction-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 .instruction-card {
-  max-width: 380px; width: 100%;
+  max-width: 400px; width: 100%;
   background: var(--surface-glass); border: 1px solid var(--border-glass);
   border-radius: var(--radius); padding: 32px 24px; text-align: center;
   box-shadow: var(--shadow); animation: slide-up 0.6s ease-out;
@@ -73,6 +77,18 @@ html, body {
   background: linear-gradient(135deg, #fff, var(--accent));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
+
+/* Feature Badges */
+.feature-badges {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  margin: 12px 0 16px;
+}
+.feature-badge {
+  padding: 4px 10px; font-size: 11px; font-weight: 600;
+  background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 20px; color: var(--accent); letter-spacing: 0.3px;
+}
+
 .instruction-steps { list-style: none; margin: 20px 0; text-align: left; }
 .instruction-steps li {
   display: flex; align-items: flex-start; gap: 12px; padding: 10px 0;
@@ -107,16 +123,25 @@ html, body {
 .btn-secondary:active { transform: scale(0.96); background: rgba(255,255,255,0.1); }
 .btn-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 48px; height: 48px;
+  width: 44px; height: 44px;
   background: var(--surface-glass); backdrop-filter: blur(12px);
   border: 1px solid var(--border-glass); border-radius: 50%;
-  color: var(--text-primary); font-size: 20px; cursor: pointer;
+  color: var(--text-primary); font-size: 18px; cursor: pointer;
   transition: var(--transition); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 .btn-icon:active { transform: scale(0.9); background: rgba(255,255,255,0.12); }
 .btn-icon.active {
   background: var(--accent); color: #000;
   border-color: var(--accent); box-shadow: 0 4px 16px var(--accent-glow);
+}
+.btn-icon.btn-danger {
+  border-color: rgba(239,68,68,0.3);
+}
+.btn-icon.btn-danger:active {
+  background: rgba(239,68,68,0.3);
+}
+.btn-icon.btn-small {
+  width: 36px; height: 36px; font-size: 14px;
 }
 
 /* --- Top Bar --- */
@@ -130,7 +155,20 @@ html, body {
 #top-bar > * { pointer-events: auto; }
 .app-title { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
 .app-title .icon { font-size: 20px; }
-.top-actions { display: flex; gap: 8px; }
+.top-actions { display: flex; gap: 6px; align-items: center; }
+
+/* Object Count Badge */
+.object-count-badge {
+  padding: 4px 10px; font-size: 11px; font-weight: 600;
+  background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 20px; color: var(--success);
+  display: inline-flex; align-items: center; gap: 4px;
+  animation: badge-pop 0.3s ease-out;
+}
+@keyframes badge-pop {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
 
 /* --- Status Badge --- */
 #status-badge {
@@ -154,22 +192,26 @@ html, body {
 }
 .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .panel-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-secondary); }
+.panel-count { font-size: 11px; color: var(--accent); font-weight: 500; }
 .furniture-grid {
-  display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;
+  display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px;
   scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none;
 }
 .furniture-grid::-webkit-scrollbar { display: none; }
 .furniture-card {
-  flex-shrink: 0; width: 110px; scroll-snap-align: start;
+  flex-shrink: 0; width: 100px; scroll-snap-align: start;
   background: var(--surface-glass); backdrop-filter: blur(12px);
   border: 2px solid var(--border-glass); border-radius: var(--radius-sm);
-  padding: 12px; text-align: center; cursor: pointer; transition: var(--transition);
+  padding: 10px; text-align: center; cursor: pointer; transition: var(--transition);
 }
 .furniture-card:active { transform: scale(0.95); }
 .furniture-card.selected { border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
-.furniture-card .card-icon { font-size: 36px; margin-bottom: 8px; display: block; }
-.furniture-card .card-name { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
-.furniture-card .card-dims { font-size: 10px; color: var(--text-secondary); }
+.furniture-card .card-icon { font-size: 32px; margin-bottom: 6px; display: block; }
+.furniture-card .card-name { font-size: 11px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+.furniture-card .card-dims { font-size: 9px; color: var(--text-secondary); }
+.furniture-card .card-price {
+  font-size: 10px; color: var(--accent); font-weight: 600; margin-top: 4px;
+}
 
 /* --- Product Info Panel --- */
 #product-info {
@@ -179,8 +221,19 @@ html, body {
   padding: 16px 20px; display: none; animation: slide-up 0.4s ease-out; box-shadow: var(--shadow);
 }
 #product-info.visible { display: block; }
-.product-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-.product-dims { font-size: 13px; color: var(--accent); font-weight: 500; margin-bottom: 8px; }
+.product-header {
+  display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px;
+}
+.product-name { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+.product-category {
+  font-size: 11px; font-weight: 500; color: var(--accent);
+  background: rgba(245,158,11,0.1); padding: 2px 8px; border-radius: 10px;
+  display: inline-block;
+}
+.product-price {
+  font-size: 18px; font-weight: 700; color: var(--success);
+}
+.product-dims { font-size: 13px; color: var(--text-secondary); font-weight: 500; margin-bottom: 8px; margin-top: 6px; }
 .product-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
 
 /* --- Color Picker --- */
@@ -199,8 +252,20 @@ html, body {
 /* --- Side Controls --- */
 #side-controls {
   position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 2800;
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 8px;
 }
+.side-divider {
+  width: 24px; height: 1px; background: var(--border-glass);
+  align-self: center; margin: 2px 0;
+}
+
+/* --- Measurement Controls --- */
+.measure-controls {
+  position: fixed; left: 16px; top: 50%; transform: translateY(-50%); z-index: 2800;
+  display: flex; flex-direction: column; gap: 8px;
+  transition: var(--transition);
+}
+.measure-controls.hidden { display: none; }
 
 /* --- Marker Guide --- */
 #marker-guide {
@@ -224,13 +289,59 @@ html, body {
   border: 1px solid var(--border-glass); border-radius: var(--radius-sm);
   font-size: 14px; font-weight: 500; color: var(--text-primary);
   opacity: 0; transition: all 0.4s ease; pointer-events: none;
+  max-width: 90vw; white-space: nowrap;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* --- Debug / Performance Panel --- */
+.debug-panel {
+  position: fixed; top: 70px; left: 16px; z-index: 4000;
+  background: rgba(10,10,20,0.85); backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius);
+  padding: 16px; width: 220px;
+  display: none; animation: slide-right 0.3s ease-out;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.debug-panel.visible { display: block; }
+.debug-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--accent);
+}
+.debug-close {
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid var(--border-glass); border-radius: 50%;
+  color: var(--text-secondary); font-size: 12px; cursor: pointer;
+  transition: var(--transition);
+}
+.debug-close:hover { background: rgba(255,255,255,0.1); }
+.debug-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;
+}
+.debug-stat {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px; padding: 8px; text-align: center;
+}
+.debug-label {
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-secondary); display: block;
+  margin-bottom: 4px;
+}
+.debug-value {
+  font-size: 18px; font-weight: 700; color: var(--text-primary); display: block;
+  font-variant-numeric: tabular-nums;
+}
+.debug-device {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px; padding: 8px;
+}
+.debug-device .debug-label { margin-bottom: 2px; }
+.debug-device .debug-value { font-size: 10px; color: var(--text-secondary); word-break: break-all; }
 
 /* --- Animations --- */
 @keyframes slide-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slide-down { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 @keyframes slide-left { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slide-right { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 
 /* --- Three.js Canvas --- */
@@ -239,9 +350,11 @@ canvas { position: fixed !important; inset: 0 !important; z-index: 0 !important;
 /* --- WebXR AR Button (hide default, we use our own) --- */
 #ARButton { display: none !important; }
 
+/* --- Responsive --- */
 @media (min-width: 768px) {
-  .furniture-card { width: 140px; padding: 16px; }
-  .furniture-card .card-icon { font-size: 44px; }
+  .furniture-card { width: 130px; padding: 14px; }
+  .furniture-card .card-icon { font-size: 40px; }
   .instruction-card { max-width: 440px; padding: 40px 32px; }
   #product-info { max-width: 400px; left: 50%; right: auto; transform: translateX(-50%); }
+  .debug-panel { width: 280px; }
 }

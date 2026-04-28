@@ -1,15 +1,23 @@
 /**
- * app.js — Main Application: Three.js + WebXR Hit Test (Markerless AR)
+ * app.js — Main Application Orchestrator
+ *
+ * Coordinates WebXR AR session, scene management, measurement tool,
+ * screenshot system, and performance monitoring.
  *
  * Flow:
  *  1. User taps "Start AR" → enters immersive-ar session
  *  2. Camera scans surfaces → reticle appears on detected planes
- *  3. User taps screen → furniture placed at reticle location
- *  4. Gestures to scale/move/rotate
+ *  3. User taps screen → product placed at reticle location (multi-object)
+ *  4. Gestures to scale/move/rotate selected object
+ *  5. Measurement mode: tap two surface points → distance displayed
  */
 import * as THREE from 'three';
-import { ARButton } from 'three/addons/webxr/ARButton.js';
-import { createFurnitureModel, FURNITURE_CATALOG } from './furniture.js';
+import { appState } from './state.js';
+import { createProductModel, PRODUCT_CATALOG } from './furniture.js';
+import { SceneManager } from './scene-manager.js';
+import { MeasurementTool } from './measurement.js';
+import { PerformanceMonitor } from './performance.js';
+import { downloadScreenshot, shareScreenshot } from './screenshot.js';
 import { initInteractions, setInteractionTarget, resetTransform } from './interactions.js';
 import {
   initUI, hideInstructions, showInstructions,
@@ -18,19 +26,23 @@ import {
   getCurrentFurnitureId, getCurrentColorIndex
 } from './ui.js';
 
-// --- Scene globals ---
+// --- Core globals ---
 let camera, scene, renderer;
 let reticle, reticleVisible = false;
 let hitTestSource = null, hitTestSourceRequested = false;
-let placedModel = null;
 let arSession = null;
+
+// --- Managers ---
+let sceneManager = null;
+let measurementTool = null;
+let perfMonitor = null;
 
 function init() {
   // --- Three.js Scene ---
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
-  // --- Lighting ---
+  // --- Enhanced Lighting ---
   const hemiLight = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 3);
   hemiLight.position.set(0.5, 1, 0.25);
   scene.add(hemiLight);
@@ -38,18 +50,29 @@ function init() {
   const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
   dirLight.position.set(1, 3, 2);
   dirLight.castShadow = true;
-  dirLight.shadow.mapSize.set(512, 512);
+  dirLight.shadow.mapSize.set(1024, 1024);
   dirLight.shadow.camera.near = 0.1;
   dirLight.shadow.camera.far = 10;
+  dirLight.shadow.camera.left = -3;
+  dirLight.shadow.camera.right = 3;
+  dirLight.shadow.camera.top = 3;
+  dirLight.shadow.camera.bottom = -3;
   scene.add(dirLight);
 
+  // Fill light for softer shadows
+  const fillLight = new THREE.DirectionalLight(0xfff0e6, 0.6);
+  fillLight.position.set(-2, 2, -1);
+  scene.add(fillLight);
+
   // --- Renderer ---
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
   document.body.appendChild(renderer.domElement);
 
   // Place canvas behind UI
@@ -70,16 +93,19 @@ function init() {
   reticle.visible = false;
   scene.add(reticle);
 
-  // Add a small dot in the center of the reticle
+  // Center dot
   const dotGeo = new THREE.CircleGeometry(0.015, 16).rotateX(-Math.PI / 2);
   const dotMat = new THREE.MeshBasicMaterial({ color: 0xF59E0B, transparent: true, opacity: 0.6 });
-  const dot = new THREE.Mesh(dotGeo, dotMat);
-  reticle.add(dot);
+  reticle.add(new THREE.Mesh(dotGeo, dotMat));
+
+  // --- Initialize Managers ---
+  sceneManager = new SceneManager(scene, camera);
+  measurementTool = new MeasurementTool(scene);
+  perfMonitor = new PerformanceMonitor(renderer);
+  perfMonitor.createPanel();
 
   // --- AR Button setup ---
   const startBtn = document.getElementById('btn-start-ar');
-
-  // Check WebXR support
   if (navigator.xr) {
     navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
       if (supported) {
@@ -98,42 +124,36 @@ function init() {
   }
 
   // --- UI Callbacks ---
-  setOnFurnitureChange((furnitureId, colorIndex) => {
-    if (placedModel) {
-      const pos = placedModel.position.clone();
-      const rot = placedModel.rotation.clone();
-      const scl = placedModel.scale.clone();
-      scene.remove(placedModel);
-      placedModel = createFurnitureModel(furnitureId, colorIndex);
-      if (placedModel) {
-        placedModel.position.copy(pos);
-        placedModel.rotation.copy(rot);
-        placedModel.scale.copy(scl);
-        scene.add(placedModel);
-        setInteractionTarget(placedModel);
+  setOnFurnitureChange((productId, colorIndex) => {
+    if (sceneManager.getSelected()) {
+      const newModel = createProductModel(productId, colorIndex);
+      if (newModel) {
+        sceneManager.replaceSelected(newModel, productId, colorIndex);
+        setInteractionTarget(sceneManager.getSelected());
       }
     }
   });
 
-  setOnColorChange((furnitureId, colorIndex) => {
-    if (placedModel) {
-      const pos = placedModel.position.clone();
-      const rot = placedModel.rotation.clone();
-      const scl = placedModel.scale.clone();
-      scene.remove(placedModel);
-      placedModel = createFurnitureModel(furnitureId, colorIndex);
-      if (placedModel) {
-        placedModel.position.copy(pos);
-        placedModel.rotation.copy(rot);
-        placedModel.scale.copy(scl);
-        scene.add(placedModel);
-        setInteractionTarget(placedModel);
+  setOnColorChange((productId, colorIndex) => {
+    if (sceneManager.getSelected()) {
+      const newModel = createProductModel(productId, colorIndex);
+      if (newModel) {
+        sceneManager.replaceSelected(newModel, productId, colorIndex);
+        setInteractionTarget(sceneManager.getSelected());
       }
     }
   });
 
   // --- Initialize UI ---
   initUI();
+
+  // --- Wire up new buttons ---
+  _setupNewControls();
+
+  // --- State subscriptions ---
+  appState.subscribe('mode', (mode) => {
+    _updateReticleForMode(mode);
+  });
 
   // --- Window resize ---
   window.addEventListener('resize', () => {
@@ -144,6 +164,101 @@ function init() {
 
   // --- Start render loop ---
   renderer.setAnimationLoop(animate);
+}
+
+/* === Setup New Controls === */
+function _setupNewControls() {
+  // Delete selected object
+  document.getElementById('btn-delete')?.addEventListener('click', () => {
+    if (sceneManager.deleteSelected()) {
+      setInteractionTarget(sceneManager.getSelected());
+      showToast('🗑️ Object removed');
+      _updateObjectCount();
+    } else {
+      showToast('No object selected');
+    }
+  });
+
+  // Clear all objects
+  document.getElementById('btn-clear-all')?.addEventListener('click', () => {
+    const count = sceneManager.count;
+    if (count > 0) {
+      sceneManager.clearAll();
+      measurementTool.clearAll();
+      setInteractionTarget(null);
+      showToast(`🧹 Cleared ${count} objects`);
+      _updateObjectCount();
+    } else {
+      showToast('Scene is empty');
+    }
+  });
+
+  // Measurement mode toggle
+  document.getElementById('btn-measure')?.addEventListener('click', () => {
+    const current = appState.get('mode');
+    if (current === 'measurement') {
+      appState.set('mode', 'placement');
+      measurementTool.cancelPending();
+      document.getElementById('btn-measure')?.classList.remove('active');
+      showToast('📦 Placement mode');
+      _updateReticleForMode('placement');
+    } else {
+      appState.set('mode', 'measurement');
+      document.getElementById('btn-measure')?.classList.add('active');
+      showToast('📏 Measurement mode — tap two points');
+      _updateReticleForMode('measurement');
+    }
+  });
+
+  // Measurement undo
+  document.getElementById('btn-measure-undo')?.addEventListener('click', () => {
+    if (measurementTool.undoLast()) {
+      showToast('↩️ Measurement removed');
+    }
+  });
+
+  // Measurement unit toggle
+  document.getElementById('btn-measure-unit')?.addEventListener('click', () => {
+    const unit = measurementTool.toggleUnit();
+    showToast(`📐 Units: ${unit === 'cm' ? 'Centimeters' : 'Inches'}`);
+  });
+
+  // Screenshot
+  document.getElementById('btn-screenshot')?.addEventListener('click', async () => {
+    showToast('📸 Capturing...');
+    const success = await shareScreenshot(renderer, scene, camera);
+    if (success) {
+      showToast('✅ Screenshot saved!');
+    }
+  });
+
+  // Performance toggle
+  document.getElementById('btn-perf')?.addEventListener('click', () => {
+    perfMonitor.toggle();
+  });
+}
+
+function _updateReticleForMode(mode) {
+  if (mode === 'measurement') {
+    reticle.material.color.setHex(0x22C55E);
+    reticle.children.forEach(c => {
+      if (c.material) c.material.color.setHex(0x22C55E);
+    });
+  } else {
+    reticle.material.color.setHex(0xF59E0B);
+    reticle.children.forEach(c => {
+      if (c.material) c.material.color.setHex(0xF59E0B);
+    });
+  }
+}
+
+function _updateObjectCount() {
+  const badge = document.getElementById('object-count');
+  if (badge) {
+    const count = sceneManager.count;
+    badge.textContent = count > 0 ? `${count} object${count !== 1 ? 's' : ''}` : '';
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  }
 }
 
 /* === Start AR Session === */
@@ -159,9 +274,12 @@ async function startAR() {
 
     const session = await navigator.xr.requestSession('immersive-ar', sessionInit);
     arSession = session;
+    appState.set('arSessionActive', true);
 
     renderer.xr.setReferenceSpaceType('local');
     await renderer.xr.setSession(session);
+
+    perfMonitor.startSession();
 
     updateStatus('Scanning for surfaces...', false);
     document.getElementById('marker-guide')?.classList.remove('hidden');
@@ -173,13 +291,17 @@ async function startAR() {
 
     session.addEventListener('end', () => {
       arSession = null;
+      appState.update({
+        arSessionActive: false,
+        surfaceDetected: false
+      });
       hitTestSourceRequested = false;
       hitTestSource = null;
       updateStatus('AR session ended', false);
       showInstructions();
     });
 
-    showToast('🎯 Scan a flat surface, then tap to place');
+    showToast('🎯 Scan a flat surface, then tap to place product');
 
   } catch (err) {
     console.error('Failed to start AR:', err);
@@ -188,34 +310,62 @@ async function startAR() {
   }
 }
 
-/* === Tap to Place === */
+/* === Tap Handler (routes to placement or measurement) === */
 function onSelect() {
-  if (reticle.visible) {
-    // Remove old model if exists
-    if (placedModel) {
-      scene.remove(placedModel);
+  if (!reticle.visible) return;
+
+  // Get the world position from the reticle
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  reticle.matrix.decompose(position, quaternion, scale);
+
+  const mode = appState.get('mode');
+
+  if (mode === 'measurement') {
+    // --- Measurement Mode ---
+    const result = measurementTool.addPoint(position);
+    if (result.complete) {
+      showToast(`📏 Distance: ${result.formatted}`);
+      updateStatus(`Last measurement: ${result.formatted}`, true);
+    } else {
+      showToast('📍 First point set — tap second point');
+      updateStatus('Tap the second point to measure', false);
+    }
+  } else {
+    // --- Placement Mode ---
+    if (sceneManager.isFull) {
+      showToast('⚠️ Maximum products reached. Delete some first.');
+      return;
     }
 
-    // Create furniture at reticle position
-    const furnitureId = getCurrentFurnitureId();
+    const productId = getCurrentFurnitureId();
     const colorIndex = getCurrentColorIndex();
-    placedModel = createFurnitureModel(furnitureId, colorIndex);
+    const model = createProductModel(productId, colorIndex);
 
-    if (placedModel) {
-      // Decompose reticle matrix to get position and rotation
-      reticle.matrix.decompose(placedModel.position, placedModel.quaternion, placedModel.scale);
-      placedModel.scale.set(1, 1, 1); // Reset scale
-      scene.add(placedModel);
-      setInteractionTarget(placedModel);
+    if (model) {
+      model.position.copy(position);
+      model.quaternion.copy(quaternion);
+      model.scale.set(1, 1, 1);
 
-      updateStatus('Furniture placed! Tap again to reposition.', true);
-      showToast('✅ Furniture placed! Pinch/drag/twist to adjust.');
+      const index = sceneManager.addObject(model, productId, colorIndex);
+      if (index >= 0) {
+        setInteractionTarget(sceneManager.getSelected());
+        _updateObjectCount();
+
+        const count = sceneManager.count;
+        updateStatus(`${count} product${count !== 1 ? 's' : ''} placed`, true);
+        showToast(`✅ ${PRODUCT_CATALOG.find(p => p.id === productId)?.name} placed! (${count})`);
+      }
     }
   }
 }
 
 /* === Animation Loop === */
 function animate(timestamp, frame) {
+  // Performance monitoring
+  perfMonitor.update();
+
   if (frame && arSession) {
     const referenceSpace = renderer.xr.getReferenceSpace();
     const session = renderer.xr.getSession();
@@ -246,13 +396,20 @@ function animate(timestamp, frame) {
 
         if (!reticleVisible) {
           reticleVisible = true;
-          updateStatus('Surface found! Tap to place furniture.', false);
+          appState.set('surfaceDetected', true);
+          const mode = appState.get('mode');
+          if (mode === 'measurement') {
+            updateStatus('Surface found! Tap to set measurement point.', true);
+          } else {
+            updateStatus('Surface found! Tap to place product.', true);
+          }
           document.getElementById('marker-guide')?.classList.add('hidden');
         }
       } else {
         reticle.visible = false;
         if (reticleVisible) {
           reticleVisible = false;
+          appState.set('surfaceDetected', false);
           updateStatus('Scanning for surfaces...', false);
         }
       }
